@@ -1,0 +1,10 @@
+{
+    "age": 21,
+    "poids": 80.0,
+    "taille": 181,
+    "sexe": "Homme",
+    "activite_defaut": "marche",
+    "activite_defaut_display": "🚶 Marche",
+    "niveau": "Débutant",
+    "fc_repos": 70
+}
