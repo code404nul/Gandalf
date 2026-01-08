@@ -1,12 +1,13 @@
-import json
-import os
+from os import getcwd
+import os.path
+from json import load, dump
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QSpinBox, QDoubleSpinBox, QComboBox, QPushButton,
                              QGroupBox, QMessageBox)
 from PyQt5.QtCore import Qt
 
-CONFIG_FILE = "user_profile.json"
-
+RESSOURCES_FOLDER = os.path.join(getcwd(), "ressources")
+CONFIG_FILE = RESSOURCES_FOLDER + '/user_profile.json'
 
 class UserConfigDialog(QDialog):
     def __init__(self, parent=None):
@@ -19,7 +20,7 @@ class UserConfigDialog(QDialog):
         main_layout = QVBoxLayout(self)
         
         # Titre
-        title_label = QLabel("⚙️ Profil Sportif")
+        title_label = QLabel("Profil Sportif")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
         title_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(title_label)
@@ -82,7 +83,7 @@ class UserConfigDialog(QDialog):
         activite_layout = QHBoxLayout()
         activite_layout.addWidget(QLabel("Activité par défaut :"))
         self.activite_combo = QComboBox()
-        self.activite_combo.addItems(["🚶 Marche", "🏃 Course à pied", "🚴 Vélo", "🚵 VTT", "⛷️ Ski", "🥾 Randonnée"])
+        self.activite_combo.addItems(["Marche", "Course à pied", "Vélo", "VTT", "Ski", "Randonnée"])
         activite_layout.addWidget(self.activite_combo)
         activite_layout.addStretch()
         sport_layout.addLayout(activite_layout)
@@ -130,12 +131,12 @@ class UserConfigDialog(QDialog):
     def get_config_data(self):
         """Retourne les données de configuration sous forme de dictionnaire"""
         activite_map = {
-            "🚶 Marche": "marche",
-            "🏃 Course à pied": "course",
-            "🚴 Vélo": "velo",
-            "🚵 VTT": "vtt",
-            "⛷️ Ski": "ski",
-            "🥾 Randonnée": "randonnee"
+            "Marche": "marche",
+            "Course à pied": "course",
+            "Vélo": "velo",
+            "VTT": "vtt",
+            "Ski": "ski",
+            "Randonnée": "randonnee"
         }
         
         return {
@@ -155,7 +156,7 @@ class UserConfigDialog(QDialog):
             config = self.get_config_data()
             
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=4, ensure_ascii=False)
+                dump(config, f, indent=4, ensure_ascii=False)
             
             QMessageBox.information(self, "Succès", "Profil enregistré avec succès !")
             self.accept()
@@ -170,7 +171,7 @@ class UserConfigDialog(QDialog):
         
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                config = load(f)
             
             self.age_spinbox.setValue(config.get("age", 30))
             self.poids_spinbox.setValue(config.get("poids", 70.0))
@@ -183,7 +184,7 @@ class UserConfigDialog(QDialog):
                 self.sexe_combo.setCurrentIndex(index)
             
             # Activité
-            activite = config.get("activite_defaut_display", "🚶 Marche")
+            activite = config.get("activite_defaut_display", "Marche")
             index = self.activite_combo.findText(activite)
             if index >= 0:
                 self.activite_combo.setCurrentIndex(index)
@@ -200,14 +201,13 @@ class UserConfigDialog(QDialog):
             print(f"Erreur lors du chargement de la configuration : {e}")
 
 
-def get_user_config():
+def get_user_config(config_name="user_profile"):
     """Fonction utilitaire pour récupérer la configuration utilisateur"""
     if not os.path.exists(CONFIG_FILE):
         return None
     
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            return load(f)
     except:
         return None
-
