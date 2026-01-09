@@ -197,13 +197,28 @@ class MapWindow(QMainWindow):
         # Obtenir la configuration utilisateur
         config = get_user_config()
         
+        # 🔥 Si durée = 0 et config existe, estimer la durée pour l'affichage
+        duree_dict_display = duree.copy()  # Copie pour ne pas modifier l'original
+        if duree_minutes == 0 and config:
+            from utils.calculator import _estimate_duration
+            activity = config.get("activite_defaut", "marche")
+            duree_estimee_minutes = _estimate_duration(distance, deniv['positif'], activity, config.get("niveau", "Intermédiaire"))
+            
+            # Convertir en heures/minutes/secondes pour l'affichage
+            duree_dict_display = {
+                'heures': int(duree_estimee_minutes // 60),
+                'minutes': int(duree_estimee_minutes % 60),
+                'secondes': int((duree_estimee_minutes % 1) * 60)
+            }
+            duree_minutes = duree_estimee_minutes  # Mettre à jour pour les calculs
+        
         # === Carte Trace GPS ===
         trace_html = generate_trace_html(
             distance_km=distance,
             nb_points=len(self.points),
             deniv_pos=deniv['positif'],
             deniv_neg=deniv['negatif'],
-            duree_dict=duree
+            duree_dict=duree_dict_display  # 🔥 Utiliser la durée estimée si disponible
         )
         self.trace_card.setText(trace_html)
         self.trace_card.setTextFormat(Qt.RichText)

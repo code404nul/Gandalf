@@ -1,0 +1,10 @@
+{
+    "age": 29,
+    "poids": 70.0,
+    "taille": 181,
+    "sexe": "Homme",
+    "activite_defaut": "course",
+    "activite_defaut_display": "Course à pied",
+    "niveau": "Expert",
+    "fc_repos": 64
+}
