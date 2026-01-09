@@ -3,8 +3,8 @@
     "poids": 70.0,
     "taille": 181,
     "sexe": "Homme",
-    "activite_defaut": "course",
-    "activite_defaut_display": "Course à pied",
+    "activite_defaut": "marche",
+    "activite_defaut_display": "Marche",
     "niveau": "Expert",
     "fc_repos": 64
 }

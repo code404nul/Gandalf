@@ -1,2 +1,5 @@
 ./venv
 /RELEASE
+/dist
+/build
+/ressources/temp_files

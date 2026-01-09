@@ -83,7 +83,15 @@ class UserConfigDialog(QDialog):
         activite_layout = QHBoxLayout()
         activite_layout.addWidget(QLabel("Activité par défaut :"))
         self.activite_combo = QComboBox()
-        self.activite_combo.addItems(["Marche", "Course à pied", "Vélo", "VTT", "Ski", "Randonnée"])
+        self.activite_combo.addItems([
+            "Marche", 
+            "Course à pied", 
+            "Vélo", 
+            "VTT", 
+            "Ski", 
+            "Randonnée",
+            "Natation"  # Ajout de la natation
+        ])
         activite_layout.addWidget(self.activite_combo)
         activite_layout.addStretch()
         sport_layout.addLayout(activite_layout)
@@ -136,7 +144,8 @@ class UserConfigDialog(QDialog):
             "Vélo": "velo",
             "VTT": "vtt",
             "Ski": "ski",
-            "Randonnée": "randonnee"
+            "Randonnée": "randonnee",
+            "Natation": "natation"  # Mapping natation
         }
         
         return {
