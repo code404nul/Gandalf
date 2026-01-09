@@ -32,6 +32,7 @@ class GPXParser:
         # Extraire le nom du fichier et créer le chemin complet de destination
         filename = os.path.basename(filepath)
         self.filepath = os.path.join(temp_dir, filename)
+        self.filename = filename  # Garder le nom du fichier
         
         # Copier le fichier
         copy(filepath, self.filepath)
@@ -161,8 +162,14 @@ class GPXParser:
         
         return distance_totale
 
+
 def get_info(fichier_gpx="ressources/test_files/fells_loop.gpx"):
+    """
+    Analyse un fichier GPX et retourne ses informations
     
+    Returns:
+        dict: Contient denivele, durée, distance_km, points, filename, parser
+    """
     parser = GPXParser(fichier_gpx)
     
     # Valeurs par défaut
@@ -188,7 +195,11 @@ def get_info(fichier_gpx="ressources/test_files/fells_loop.gpx"):
     else:
         print("Échec du parsing du fichier GPX")
         
-    return {"denivele": {"positif": deniv_pos, "negatif": deniv_neg},
-            "durée": {"heures": heures, "minutes": minutes, "secondes": secondes},
-            "distance_km": distance_km,
-            "points": parser.points}
+    return {
+        "denivele": {"positif": deniv_pos, "negatif": deniv_neg},
+        "durée": {"heures": heures, "minutes": minutes, "secondes": secondes},
+        "distance_km": distance_km,
+        "points": parser.points,
+        "filename": parser.filename,  # Ajout du nom de fichier
+        "parser": parser  # Ajout du parser pour référence
+    }
