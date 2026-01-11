@@ -10,15 +10,21 @@ datas = collect_data_files('pyqtlet2')
 # Ajouter l'icône aux ressources
 datas += [('ressources\\gandalf.ico', 'ressources')]
 
-# Collecter tous les sous-modules
+# Collecter tous les sous-modules nécessaires
 hiddenimports = collect_submodules('pyqtlet2') + [
     'PyQt5.QtWebEngineWidgets',
     'PyQt5.QtWebChannel',
     'PyQt5.QtWebEngineCore',
+    # Ajouter vos modules personnalisés
+    'core.gpx',
+    'core.user_config',
+    'utils.calculator',
+    'utils.info_display',
+    'utils.export_data',
 ]
 
 a = Analysis(
-    ['main.py'],  # Votre fichier principal
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=datas,
@@ -49,11 +55,11 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # Pas de terminal, seulement l'interface graphique
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='ressources\\gandalf.ico'  # Icône de l'application
+    icon='ressources\\gandalf.ico'
 )

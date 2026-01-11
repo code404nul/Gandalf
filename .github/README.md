@@ -127,9 +127,7 @@ python3 main.py
 La première version alpha de Gandalf est maintenant disponible ! 
 
 **Téléchargements :**
-- 🪟 **Windows** : `Gandalf-v0.1-alpha-windows.exe` (à venir)
-- 🐧 **Linux** : `Gandalf-v0.1-alpha-linux.AppImage` (à venir)
-- 📦 **Source** : Clonez le repository et suivez les instructions d'installation
+à venir
 
 **Nouveautés v0.1-alpha :**
 - ✨ Import multi-fichiers GPX
