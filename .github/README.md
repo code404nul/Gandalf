@@ -127,7 +127,7 @@ python3 main.py
 La première version alpha de Gandalf est maintenant disponible ! 
 
 **Téléchargements :**
-à venir
+à veni
 
 **Nouveautés v0.1-alpha :**
 - ✨ Import multi-fichiers GPX
