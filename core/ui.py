@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
                              QWidget, QPushButton, QSpinBox, QLabel, QFileDialog,
-                             QListWidget, QListWidgetItem, QCheckBox)
+                             QListWidget, QListWidgetItem, QCheckBox, QMessageBox, QMenu)
 from PyQt5.QtCore import Qt
 from pyqtlet2 import L, MapWidget
 
@@ -9,6 +9,7 @@ from core.gpx import get_info
 from core.user_config import UserConfigDialog, get_user_config
 from utils.calculator import calculate_calories, calculate_fitness_metrics
 from utils.info_display import *
+from utils.export_data import export_to_json, export_to_csv
 
 # Couleurs pour les différentes traces
 TRACE_COLORS = ['#FF0000', '#0000FF', '#00FF00', '#FF00FF', '#FFA500', 
@@ -75,6 +76,12 @@ class MapWindow(QMainWindow):
         btn_show_all.clicked.connect(self.show_global_view)
         btn_show_all.setStyleSheet("background-color: #9C27B0; color: white; padding: 8px;")
         left_layout.addWidget(btn_show_all)
+        
+        # Bouton d'export
+        btn_export = QPushButton("📊 Exporter")
+        btn_export.clicked.connect(self.export_data)
+        btn_export.setStyleSheet("background-color: #009688; color: white; font-weight: bold; padding: 10px;")
+        left_layout.addWidget(btn_export)
         
         main_layout.addWidget(left_panel)
         
@@ -346,6 +353,48 @@ class MapWindow(QMainWindow):
                 else:
                     self.update_info_display_global()
             print("Configuration mise à jour")
+
+    def export_data(self):
+        """Ouvre un menu pour choisir le format d'export"""
+        if not self.loaded_traces:
+            QMessageBox.warning(self, "Aucune donnée", "Aucune trace à exporter.")
+            return
+        
+        # Créer le menu contextuel
+        menu = QMenu(self)
+        
+        # Déterminer quelles traces exporter
+        if self.selected_trace_index is not None:
+            # Une trace est sélectionnée
+            menu.addSection("Exporter trace sélectionnée")
+            action_json_single = menu.addAction("JSON - Trace sélectionnée")
+            action_csv_single = menu.addAction("CSV - Trace sélectionnée")
+            menu.addSeparator()
+        
+        # Toujours proposer l'export global
+        menu.addSection("Exporter toutes les traces")
+        action_json_all = menu.addAction("JSON - Toutes les traces")
+        action_csv_all = menu.addAction("CSV - Toutes les traces")
+        
+        # Afficher le menu à la position du bouton
+        export_btn = self.sender()
+        if export_btn:
+            action = menu.exec_(export_btn.mapToGlobal(export_btn.rect().bottomLeft()))
+            
+            if action:
+                # Déterminer les traces à exporter
+                if self.selected_trace_index is not None and action in [action_json_single, action_csv_single]:
+                    # Exporter uniquement la trace sélectionnée
+                    traces_to_export = [self.loaded_traces[self.selected_trace_index]]
+                else:
+                    # Exporter toutes les traces
+                    traces_to_export = self.loaded_traces
+                
+                # Exporter selon le format choisi
+                if action in [action_json_single, action_json_all]:
+                    export_to_json(self, traces_to_export)
+                elif action in [action_csv_single, action_csv_all]:
+                    export_to_csv(self, traces_to_export)
 
     def update_info_display_single(self, trace_index):
         """Affiche les informations d'une seule trace"""
