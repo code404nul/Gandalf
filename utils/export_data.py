@@ -4,10 +4,11 @@ from datetime import datetime
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from core.user_config import get_user_config
 from utils.calculator import calculate_calories, calculate_fitness_metrics
+from utils.co2_calculator import calculate_co2_saved, format_co2_for_export, get_co2_summary_text
 
 
 def export_to_json(parent, traces_data):
-    """Exporte les données en JSON avec stats de santé"""
+    """Exporte les données en JSON avec stats de santé et CO2"""
     if not traces_data:
         QMessageBox.warning(parent, "Aucune donnée", "Aucune trace à exporter.")
         return
@@ -28,6 +29,8 @@ def export_to_json(parent, traces_data):
         "user_profile": config if config else None,
         "traces": []
     }
+    
+    total_co2_saved = None
     
     for trace in traces_data:
         data = trace['data']
@@ -73,6 +76,11 @@ def export_to_json(parent, traces_data):
                     "intensity_percent": metrics['intensite']
                 }
         
+        # Calcul CO2 économisé pour cette trace
+        co2_data = calculate_co2_saved(distance)
+        if co2_data:
+            trace_export["environmental_impact"] = format_co2_for_export(co2_data, "json")
+        
         export_data["traces"].append(trace_export)
     
     # Ajouter les totaux
@@ -107,18 +115,30 @@ def export_to_json(parent, traces_data):
         if total_calories:
             export_data["summary"]["total_calories_burned"] = total_calories
     
+    # Calcul CO2 total économisé
+    total_co2_data = calculate_co2_saved(total_distance)
+    if total_co2_data:
+        export_data["summary"]["total_environmental_impact"] = format_co2_for_export(total_co2_data, "json")
+        # Ajouter un message lisible
+        export_data["summary"]["environmental_message"] = get_co2_summary_text(total_co2_data, "detaille")
+    
     # Sauvegarder
     try:
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(export_data, f, indent=2, ensure_ascii=False)
         
-        QMessageBox.information(parent, "Export réussi", f"Données exportées dans:\n{file_path}")
+        # Message de succès avec info CO2
+        msg = f"Données exportées dans:\n{file_path}"
+        if total_co2_data:
+            msg += f"\n\n{get_co2_summary_text(total_co2_data, 'court')}"
+        
+        QMessageBox.information(parent, "Export réussi", msg)
     except Exception as e:
         QMessageBox.critical(parent, "Erreur d'export", f"Impossible d'exporter les données:\n{str(e)}")
 
 
 def export_to_csv(parent, traces_data):
-    """Exporte les données en CSV avec stats de santé"""
+    """Exporte les données en CSV avec stats de santé et CO2"""
     if not traces_data:
         QMessageBox.warning(parent, "Aucune donnée", "Aucune trace à exporter.")
         return
@@ -134,6 +154,7 @@ def export_to_csv(parent, traces_data):
         return
     
     config = get_user_config()
+    total_distance = 0
     
     try:
         with open(file_path, 'w', newline='', encoding='utf-8') as f:
@@ -141,7 +162,9 @@ def export_to_csv(parent, traces_data):
                 'Fichier', 'Couleur', 'Distance (km)', 'D+ (m)', 'D- (m)',
                 'Durée (h)', 'Durée (min)', 'Durée (s)', 'Points',
                 'Calories', 'Vitesse moy. (km/h)', 'Allure (min/km)', 
-                'FC moy. (bpm)', 'Intensité (%)'
+                'FC moy. (bpm)', 'Intensité (%)',
+                'CO2 économisé voiture (kg)', 'CO2 économisé bus (kg)', 
+                'CO2 économisé train (kg)', 'Équiv. arbres (jours)'
             ]
             
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -152,6 +175,7 @@ def export_to_csv(parent, traces_data):
                 deniv = data['denivele']
                 duree = data['durée']
                 distance = data['distance_km']
+                total_distance += distance
                 
                 duree_minutes = duree['heures'] * 60 + duree['minutes'] + duree['secondes'] / 60
                 
@@ -174,7 +198,11 @@ def export_to_csv(parent, traces_data):
                     'Vitesse moy. (km/h)': '',
                     'Allure (min/km)': '',
                     'FC moy. (bpm)': '',
-                    'Intensité (%)': ''
+                    'Intensité (%)': '',
+                    'CO2 économisé voiture (kg)': '',
+                    'CO2 économisé bus (kg)': '',
+                    'CO2 économisé train (kg)': '',
+                    'Équiv. arbres (jours)': ''
                 }
                 
                 if config:
@@ -191,8 +219,20 @@ def export_to_csv(parent, traces_data):
                         row['FC moy. (bpm)'] = f"{metrics['fc_moyenne']:.0f}"
                         row['Intensité (%)'] = f"{metrics['intensite']:.1f}"
                 
+                # Calcul CO2
+                co2_data = calculate_co2_saved(distance)
+                if co2_data:
+                    co2_csv = format_co2_for_export(co2_data, "csv")
+                    row.update(co2_csv)
+                
                 writer.writerow(row)
         
-        QMessageBox.information(parent, "Export réussi", f"Données exportées dans:\n{file_path}")
+        # Message de succès avec info CO2
+        msg = f"Données exportées dans:\n{file_path}"
+        total_co2_data = calculate_co2_saved(total_distance)
+        if total_co2_data:
+            msg += f"\n\n{get_co2_summary_text(total_co2_data, 'court')}"
+        
+        QMessageBox.information(parent, "Export réussi", msg)
     except Exception as e:
         QMessageBox.critical(parent, "Erreur d'export", f"Impossible d'exporter les données:\n{str(e)}")

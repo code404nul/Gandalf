@@ -3,7 +3,7 @@ import os.path
 from json import load, dump
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QSpinBox, QDoubleSpinBox, QComboBox, QPushButton,
-                             QGroupBox, QMessageBox)
+                             QGroupBox, QMessageBox, QCheckBox)
 from PyQt5.QtCore import Qt
 
 RESSOURCES_FOLDER = os.path.join(getcwd(), "ressources")
@@ -90,11 +90,29 @@ class UserConfigDialog(QDialog):
             "VTT", 
             "Ski", 
             "Randonnée",
-            "Natation"  # Ajout de la natation
+            "Natation"
         ])
         activite_layout.addWidget(self.activite_combo)
         activite_layout.addStretch()
         sport_layout.addLayout(activite_layout)
+        
+        # Checkbox auto-détection
+        self.auto_detect_checkbox = QCheckBox("Auto-détection d'activité depuis le nom du fichier")
+        self.auto_detect_checkbox.setChecked(True)
+        self.auto_detect_checkbox.setToolTip(
+            "Si activé, l'activité sera détectée automatiquement si le nom du fichier contient:\n"
+            "MARCHE, COURSE, VELO, VTT, SKI, RANDONNEE, NATATION"
+        )
+        sport_layout.addWidget(self.auto_detect_checkbox)
+        
+        # Info sur l'auto-détection
+        info_label = QLabel(
+            "💡 <i>L'auto-détection cherche des mots-clés dans le nom du fichier GPX<br>"
+            "(ex: \"sortie_COURSE_2024.gpx\" sera détecté comme Course à pied)</i>"
+        )
+        info_label.setStyleSheet("color: #666; padding: 5px; font-size: 11px;")
+        info_label.setWordWrap(True)
+        sport_layout.addWidget(info_label)
         
         # Niveau sportif
         niveau_layout = QHBoxLayout()
@@ -145,7 +163,7 @@ class UserConfigDialog(QDialog):
             "VTT": "vtt",
             "Ski": "ski",
             "Randonnée": "randonnee",
-            "Natation": "natation"  # Mapping natation
+            "Natation": "natation"
         }
         
         return {
@@ -155,6 +173,7 @@ class UserConfigDialog(QDialog):
             "sexe": self.sexe_combo.currentText(),
             "activite_defaut": activite_map[self.activite_combo.currentText()],
             "activite_defaut_display": self.activite_combo.currentText(),
+            "auto_detect_activity": self.auto_detect_checkbox.isChecked(),
             "niveau": self.niveau_combo.currentText(),
             "fc_repos": self.fc_repos_spinbox.value()
         }
@@ -198,6 +217,9 @@ class UserConfigDialog(QDialog):
             if index >= 0:
                 self.activite_combo.setCurrentIndex(index)
             
+            # Auto-détection
+            self.auto_detect_checkbox.setChecked(config.get("auto_detect_activity", True))
+            
             # Niveau
             niveau = config.get("niveau", "Intermédiaire")
             index = self.niveau_combo.findText(niveau)
@@ -210,6 +232,49 @@ class UserConfigDialog(QDialog):
             print(f"Erreur lors du chargement de la configuration : {e}")
 
 
+def detect_activity_from_filename(filename):
+    """
+    Détecte l'activité sportive à partir du nom de fichier.
+    Retourne le code d'activité (ex: 'course', 'velo') ou None si non détecté.
+    """
+    filename_upper = filename.upper()
+    
+    # Dictionnaire de mots-clés pour chaque activité
+    keywords = {
+        "marche": ["MARCHE", "WALK"],
+        "course": ["COURSE", "RUN", "RUNNING", "FOOTING", "JOGGING"],
+        "velo": ["VELO", "VÉLO", "BIKE", "CYCLING", "CYCLISME"],
+        "vtt": ["VTT", "MTB", "MOUNTAIN"],
+        "ski": ["SKI", "SKIING"],
+        "randonnee": ["RANDONNEE", "RANDONNÉE", "RANDO", "HIKING", "HIKE", "TREK"],
+        "natation": ["NATATION", "NAT", "SWIM", "SWIMMING", "PISCINE"]
+    }
+    
+    # Chercher les mots-clés dans le nom de fichier
+    for activity, words in keywords.items():
+        for word in words:
+            if word in filename_upper:
+                return activity
+    
+    return None
+
+
+def get_activity_display_name(activity_code):
+    """
+    Convertit le code d'activité en nom d'affichage.
+    """
+    display_map = {
+        "marche": "Marche",
+        "course": "Course à pied",
+        "velo": "Vélo",
+        "vtt": "VTT",
+        "ski": "Ski",
+        "randonnee": "Randonnée",
+        "natation": "Natation"
+    }
+    return display_map.get(activity_code, activity_code)
+
+
 def get_user_config(config_name="user_profile"):
     """Fonction utilitaire pour récupérer la configuration utilisateur"""
     if not os.path.exists(CONFIG_FILE):
@@ -220,3 +285,36 @@ def get_user_config(config_name="user_profile"):
             return load(f)
     except:
         return None
+
+
+def get_activity_for_trace(filename, user_config=None):
+    """
+    Détermine l'activité à utiliser pour une trace donnée.
+    
+    Args:
+        filename: Nom du fichier GPX
+        user_config: Configuration utilisateur (obtenue via get_user_config())
+    
+    Returns:
+        tuple: (activity_code, activity_display_name, is_detected)
+        - activity_code: code de l'activité (ex: 'course')
+        - activity_display_name: nom d'affichage (ex: 'Course à pied')
+        - is_detected: True si l'activité a été auto-détectée
+    """
+    if user_config is None:
+        user_config = get_user_config()
+    
+    # Activité par défaut
+    default_activity = user_config.get("activite_defaut", "marche") if user_config else "marche"
+    default_display = user_config.get("activite_defaut_display", "Marche") if user_config else "Marche"
+    
+    # Vérifier si l'auto-détection est activée
+    auto_detect = user_config.get("auto_detect_activity", True) if user_config else True
+    
+    if auto_detect:
+        detected_activity = detect_activity_from_filename(filename)
+        if detected_activity:
+            return (detected_activity, get_activity_display_name(detected_activity), True)
+    
+    # Retourner l'activité par défaut
+    return (default_activity, default_display, False)

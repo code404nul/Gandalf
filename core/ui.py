@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt
 from pyqtlet2 import L, MapWidget
 
 from core.gpx import get_info
-from core.user_config import UserConfigDialog, get_user_config
+from core.user_config import UserConfigDialog, get_user_config, get_activity_for_trace
 from utils.calculator import calculate_calories, calculate_fitness_metrics
 from utils.info_display import *
 from utils.export_data import export_to_json, export_to_csv
@@ -59,28 +59,28 @@ class MapWindow(QMainWindow):
         # Boutons de gestion
         btn_import = QPushButton("Importer GPX")
         btn_import.clicked.connect(self.import_gpx)
-        btn_import.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 10px;")
+        btn_import.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 10px; border-radius: 10px;")
         left_layout.addWidget(btn_import)
         
         btn_remove = QPushButton("Supprimer sélection")
         btn_remove.clicked.connect(self.remove_selected_trace)
-        btn_remove.setStyleSheet("background-color: #f44336; color: white; font-weight: bold; padding: 10px;")
+        btn_remove.setStyleSheet("background-color: #f44336; color: white; font-weight: bold; padding: 10px; border-radius: 10px;")
         left_layout.addWidget(btn_remove)
         
         btn_clear = QPushButton("Tout effacer")
         btn_clear.clicked.connect(self.clear_all_traces)
-        btn_clear.setStyleSheet("background-color: #ff9800; color: white; padding: 8px;")
+        btn_clear.setStyleSheet("background-color: #ff9800; color: white; font-weight: bold; padding: 10px; border-radius: 10px;")
         left_layout.addWidget(btn_clear)
         
         btn_show_all = QPushButton("Vue globale")
         btn_show_all.clicked.connect(self.show_global_view)
-        btn_show_all.setStyleSheet("background-color: #9C27B0; color: white; padding: 8px;")
+        btn_show_all.setStyleSheet("background-color: #9C27B0; color: white; font-weight: bold; padding: 10px;  border-radius: 10px;")
         left_layout.addWidget(btn_show_all)
         
         # Bouton d'export
-        btn_export = QPushButton("📊 Exporter")
+        btn_export = QPushButton("Exporter")
         btn_export.clicked.connect(self.export_data)
-        btn_export.setStyleSheet("background-color: #009688; color: white; font-weight: bold; padding: 10px;")
+        btn_export.setStyleSheet("background-color: #009688; color: white; font-weight: bold; padding: 10px; border-radius: 10px;")
         left_layout.addWidget(btn_export)
         
         main_layout.addWidget(left_panel)
@@ -210,8 +210,21 @@ class MapWindow(QMainWindow):
         if not file_paths:
             return
 
+        user_config = get_user_config()
+
         for file_path in file_paths:
             gpx_data = get_info(file_path)
+            
+            # Détecter l'activité pour cette trace
+            activity_code, activity_display, is_detected = get_activity_for_trace(
+                gpx_data['filename'], 
+                user_config
+            )
+            
+            # Ajouter les infos d'activité aux données
+            gpx_data['activity'] = activity_code
+            gpx_data['activity_display'] = activity_display
+            gpx_data['activity_auto_detected'] = is_detected
             
             # Attribuer une couleur
             color_index = len(self.loaded_traces) % len(TRACE_COLORS)
@@ -233,6 +246,12 @@ class MapWindow(QMainWindow):
             # Dessiner la trace
             if self.map:
                 self.draw_trace(trace)
+            
+            # Log de l'activité détectée
+            if is_detected:
+                print(f"✓ {gpx_data['filename']}: Activité auto-détectée -> {activity_display}")
+            else:
+                print(f"  {gpx_data['filename']}: Activité par défaut -> {activity_display}")
         
         # Mise à jour de l'affichage en vue globale
         self.show_global_view()
@@ -363,6 +382,10 @@ class MapWindow(QMainWindow):
         # Créer le menu contextuel
         menu = QMenu(self)
         
+        # Initialiser les variables à None
+        action_json_single = None
+        action_csv_single = None
+        
         # Déterminer quelles traces exporter
         if self.selected_trace_index is not None:
             # Une trace est sélectionnée
@@ -408,6 +431,12 @@ class MapWindow(QMainWindow):
         duree = trace_data["durée"]
         distance = trace_data["distance_km"]
         
+        # Récupérer l'activité
+        activity_display = trace_data.get('activity_display', 'Non défini')
+        is_auto_detected = trace_data.get('activity_auto_detected', False)
+        activity_icon = "🔍" if is_auto_detected else "⚙️"
+        activity_label = f"{activity_icon} {activity_display}"
+        
         # Durée totale en minutes
         duree_minutes = duree['heures'] * 60 + duree['minutes'] + duree['secondes'] / 60
         
@@ -418,8 +447,13 @@ class MapWindow(QMainWindow):
         duree_dict_display = duree.copy()
         if duree_minutes == 0 and config:
             from utils.calculator import _estimate_duration
-            activity = config.get("activite_defaut", "marche")
-            duree_estimee_minutes = _estimate_duration(distance, deniv['positif'], activity, config.get("niveau", "Intermédiaire"))
+            activity_code = trace_data.get('activity', config.get("activite_defaut", "marche"))
+            duree_estimee_minutes = _estimate_duration(
+                distance, 
+                deniv['positif'], 
+                activity_code, 
+                config.get("niveau", "Intermédiaire")
+            )
             
             duree_dict_display = {
                 'heures': int(duree_estimee_minutes // 60),
@@ -432,6 +466,9 @@ class MapWindow(QMainWindow):
         trace_html = f"""
         <div style='font-family: Arial, sans-serif;'>
             <h3 style='color: {trace_color}; margin-top: 0;'>{trace_data['filename']}</h3>
+            <p style='background-color: #e3f2fd; padding: 5px; border-radius: 4px; margin: 5px 0;'>
+                <b>Type:</b> {activity_label}
+            </p>
             <table style='width: 100%; border-spacing: 0;'>
                 <tr><td style='padding: 5px 0;'><b>Distance:</b></td><td style='text-align: right;'>{distance:.2f} km</td></tr>
                 <tr><td style='padding: 5px 0;'><b>Points:</b></td><td style='text-align: right;'>{len(trace_data['points'])}</td></tr>
@@ -447,11 +484,20 @@ class MapWindow(QMainWindow):
         
         # === Carte Fitness ===
         if config:
-            calories = calculate_calories(distance, deniv['positif'], duree_minutes, config)
-            metrics = calculate_fitness_metrics(distance, deniv['positif'], duree_minutes, config)
+            # Utiliser l'activité de la trace pour les calculs
+            activity_code = trace_data.get('activity', config.get("activite_defaut", "marche"))
+            activity_display_name = trace_data.get('activity_display', config.get("activite_defaut_display", "Marche"))
+            
+            # Créer une config temporaire avec l'activité de cette trace
+            trace_config = config.copy()
+            trace_config['activite_defaut'] = activity_code
+            trace_config['activite_defaut_display'] = activity_display_name
+            
+            calories = calculate_calories(distance, deniv['positif'], duree_minutes, trace_config)
+            metrics = calculate_fitness_metrics(distance, deniv['positif'], duree_minutes, trace_config)
             
             if calories and metrics:
-                fitness_html = generate_fitness_html(config, calories, metrics)
+                fitness_html = generate_fitness_html(trace_config, calories, metrics)
                 self.fitness_card.setText(fitness_html)
                 self.fitness_card.setTextFormat(Qt.RichText)
                 self.fitness_card.setStyleSheet(FITNESS_CARD_STYLE_ACTIVE)
@@ -459,6 +505,9 @@ class MapWindow(QMainWindow):
             self.fitness_card.setText(generate_no_profile_html())
             self.fitness_card.setTextFormat(Qt.RichText)
             self.fitness_card.setStyleSheet(FITNESS_CARD_STYLE_INACTIVE)
+
+
+    # Pour la vue globale, vous pouvez aussi afficher un récapitulatif des activités :
 
     def update_info_display_global(self):
         """Met à jour l'affichage avec les statistiques globales"""
@@ -473,6 +522,14 @@ class MapWindow(QMainWindow):
         total_deniv_pos = sum(t['data']['denivele']['positif'] for t in self.loaded_traces)
         total_deniv_neg = sum(t['data']['denivele']['negatif'] for t in self.loaded_traces)
         total_points = sum(len(t['data']['points']) for t in self.loaded_traces)
+        
+        # Compter les activités
+        activity_counts = {}
+        for trace in self.loaded_traces:
+            activity = trace['data'].get('activity_display', 'Non défini')
+            activity_counts[activity] = activity_counts.get(activity, 0) + 1
+        
+        activities_summary = ", ".join([f"{count}x {act}" for act, count in activity_counts.items()])
         
         # Calculer la durée totale
         total_seconds = sum(
@@ -507,9 +564,12 @@ class MapWindow(QMainWindow):
         # Afficher les infos de trace
         trace_html = f"""
         <div style='font-family: Arial, sans-serif;'>
-            <h3 style='color: #1976D2; margin-top: 0;'>📊 Statistiques Globales</h3>
+            <h3 style='color: #1976D2; margin-top: 0;'>Statistiques Globales</h3>
             <p style='background-color: #e3f2fd; padding: 5px; border-radius: 4px;'>
                 <b>{len(self.loaded_traces)} trace(s) chargée(s)</b>
+            </p>
+            <p style='background-color: #f3e5f5; padding: 5px; border-radius: 4px; font-size: 11px;'>
+                {activities_summary}
             </p>
             <table style='width: 100%; border-spacing: 0;'>
                 <tr><td style='padding: 5px 0;'><b>Distance totale:</b></td><td style='text-align: right;'>{total_distance:.2f} km</td></tr>
@@ -523,6 +583,21 @@ class MapWindow(QMainWindow):
         
         self.trace_card.setText(trace_html)
         self.trace_card.setTextFormat(Qt.RichText)
+        
+        # Calculer les stats fitness (basées sur les totaux)
+        if config:
+            calories = calculate_calories(total_distance, total_deniv_pos, duree_minutes, config)
+            metrics = calculate_fitness_metrics(total_distance, total_deniv_pos, duree_minutes, config)
+            
+            if calories and metrics:
+                fitness_html = generate_fitness_html(config, calories, metrics)
+                self.fitness_card.setText(fitness_html)
+                self.fitness_card.setTextFormat(Qt.RichText)
+                self.fitness_card.setStyleSheet(FITNESS_CARD_STYLE_ACTIVE)
+        else:
+            self.fitness_card.setText(generate_no_profile_html())
+            self.fitness_card.setTextFormat(Qt.RichText)
+            self.fitness_card.setStyleSheet(FITNESS_CARD_STYLE_INACTIVE)
         
         # Calculer les stats fitness (basées sur les totaux)
         if config:

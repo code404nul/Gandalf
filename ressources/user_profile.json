@@ -5,6 +5,7 @@
     "sexe": "Homme",
     "activite_defaut": "course",
     "activite_defaut_display": "Course à pied",
+    "auto_detect_activity": true,
     "niveau": "Expert",
     "fc_repos": 64
 }
