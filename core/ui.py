@@ -1,8 +1,9 @@
-import sys
+import os.path
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
                              QWidget, QPushButton, QSpinBox, QLabel, QFileDialog,
                              QListWidget, QListWidgetItem, QCheckBox, QMessageBox, QMenu)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from pyqtlet2 import L, MapWidget
 
 from core.gpx import get_info
@@ -21,7 +22,13 @@ class MapWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Trace GPS Multi-fichiers - Interactive")
         self.setGeometry(100, 100, 1400, 800)
-        
+
+        icon_path = os.path.join('ressources', 'gandalf.ico')
+        if os.path.exists(icon_path):
+            app_icon = QIcon(icon_path)
+            self.setWindowIcon(app_icon)
+            QApplication.instance().setWindowIcon(app_icon)
+            
         # Widget central
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
